@@ -252,41 +252,54 @@ NSString *const kICloudManagerDocumentURLsKey = @"kICloudManagerDocumentURLs";
 
 - (void)renameDocument:(NSURL *)documentURL newName:(NSString *)newName callback:(void (^)(NSError *error))callback {
     
+    NSArray *documentURLs = [self.documentURLs copy];
     NSURL *destinationURL = [[[documentURL URLByDeletingLastPathComponent] URLByAppendingPathComponent:newName] URLByAppendingPathExtension:@"txt"];
     
     // Code originally from http://stackoverflow.com/questions/14358504/rename-an-icloud-document
     
-    // TODO: move to background thread
-    // In more full-featured app, would indicate in UI that cell is being updated and not allow further manipulation until that is done
-    
     dispatch_async(dispatch_get_global_queue (DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(void) {
-        __block BOOL moveResult = NO;
-        __block NSError *moveError = nil;
+        BOOL foundMatch = NO;
         
-        NSFileCoordinator *fileCoordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
-
-        NSError *coordinateError = nil;
-        
-        [fileCoordinator coordinateWritingItemAtURL:documentURL
-                                            options:NSFileCoordinatorWritingForMoving
-                                   writingItemAtURL:destinationURL
-                                            options:NSFileCoordinatorWritingForReplacing
-                                              error:&coordinateError
-                                         byAccessor:^(NSURL *newURL1, NSURL *newURL2) {
-                                             moveResult = [[NSFileManager defaultManager] moveItemAtURL:documentURL toURL:destinationURL error:&moveError];
-                                         }];
+        for (NSURL *documentURL in documentURLs) {
+            NSString *name = [self userVisibleNameForDocumentURL:documentURL];
+            if ([name compare:newName options:NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch | NSWidthInsensitiveSearch] == NSOrderedSame) {
+                foundMatch = YES;
+                break;
+            }
+        }
         
         NSError *error = nil;
         
-        // TODO: I haven't checked what these error actually contain. If we were to try to use them to show the user the problem, there would probably need to be some massaging involved.
-        
-        if (coordinateError != nil) {
-            error = coordinateError;
-        } else if (moveResult == NO) {
-            if (moveError != nil) {
-                error = moveError;
-            } else {
-                // TODO: set error
+        if (foundMatch == YES) {
+            // TODO: fill in with real values.
+            error = [NSError errorWithDomain:@"RenameError" code:0 userInfo:nil];
+        } else {
+            __block BOOL moveResult = NO;
+            __block NSError *moveError = nil;
+            
+            NSFileCoordinator *fileCoordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+
+            NSError *coordinateError = nil;
+            
+            [fileCoordinator coordinateWritingItemAtURL:documentURL
+                                                options:NSFileCoordinatorWritingForMoving
+                                       writingItemAtURL:destinationURL
+                                                options:NSFileCoordinatorWritingForReplacing
+                                                  error:&coordinateError
+                                             byAccessor:^(NSURL *newURL1, NSURL *newURL2) {
+                                                 moveResult = [[NSFileManager defaultManager] moveItemAtURL:documentURL toURL:destinationURL error:&moveError];
+                                             }];
+            
+            // TODO: I haven't checked what these error actually contain. If we were to try to use them to show the user the problem, there would probably need to be some massaging involved.
+            
+            if (coordinateError != nil) {
+                error = coordinateError;
+            } else if (moveResult == NO) {
+                if (moveError != nil) {
+                    error = moveError;
+                } else {
+                    // TODO: set error
+                }
             }
         }
         

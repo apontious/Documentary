@@ -42,7 +42,11 @@
     
     if ([newName length] > 0 && [newName isEqualToString:self.oldNameLabel.text] == NO) {
         [[AppDelegate appDelegate].iCloudManager renameDocument:self.document.fileURL newName:newName callback:^(NSError *error) {
-            self.documentViewController.title = newName;
+            if (error != nil) {
+                // TODO: show error
+            } else {
+                self.documentViewController.title = newName;
+            }
         }];
     }
 }
